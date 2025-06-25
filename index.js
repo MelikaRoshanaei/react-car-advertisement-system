@@ -26,6 +26,19 @@ app.get("/", (req, res) => {
   res.send("Root Route Placeholder!");
 });
 
+app.get("/cars", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query("SELECT * FROM cars");
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.log("Error Fetching Cars: ", err.message);
+    res.status(500).json({ error: "Failed To Fetch Cars!" });
+  } finally {
+    client.release();
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`server is running on port ${PORT}`);
 });
