@@ -21,6 +21,11 @@ const PORT = process.env.PORT;
   }
 })();
 
+app.get("/", (req, res) => {
+  // TODO: Add homepage functionality
+  res.send("Root Route Placeholder!");
+});
+
 app.listen(PORT, () => {
   console.log(`server is running on port ${PORT}`);
 });
