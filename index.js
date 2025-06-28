@@ -34,7 +34,7 @@ app.get("/cars", async (req, res) => {
     const result = await client.query("SELECT * FROM cars");
     res.status(200).json(result.rows);
   } catch (err) {
-    console.log("Error Fetching Cars: ", err.message);
+    console.log("Error Fetching Cars:", err.message);
     res.status(500).json({ error: "Failed To Fetch Cars!" });
   } finally {
     client.release();
@@ -57,7 +57,7 @@ app.post("/sell-car", async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.log("Error Adding a New Car: ", err.message);
+    console.log("Error Adding a New Car:", err.message);
     res.status(500).json({ error: "Failed To Add a New Car!" });
   } finally {
     client.release();
@@ -78,6 +78,29 @@ app.get("/cars/:id", async (req, res) => {
   } catch (err) {
     console.log(`Error Fetching Car With ID ${id}:`, err.message);
     res.status(500).json({ error: "Failed To Get Car Details!" });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete("/cars/:id", async (req, res) => {
+  const id = req.params.id;
+  const client = await pool.connect();
+
+  try {
+    const result = await client.query(
+      "DELETE FROM cars WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: `Car Not Found!` });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.log(`Error Deleting Car With ID ${id}:`, err.message);
+    res.status(500).json({ error: "Failed To Delete Car!" });
   } finally {
     client.release();
   }
