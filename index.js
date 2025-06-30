@@ -64,6 +64,34 @@ app.post("/sell-car", async (req, res) => {
   }
 });
 
+app.get("/cars/search", async (req, res) => {
+  //TODO: Add more fields & update the logic
+  const { name } = req.query;
+  const client = await pool.connect();
+
+  if (!name) {
+    return res.status(400).json({ error: "Name Is Required!" });
+  }
+
+  try {
+    const result = await client.query(
+      "SELECT * FROM cars WHERE name ILIKE $1",
+      [`%${name}%`]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "No Existing Match Found!" });
+    }
+
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.log("Something Went Wrong:", err.message);
+    res.status(500).json({ error: "The Operation Failed!" });
+  } finally {
+    client.release();
+  }
+});
+
 app.get("/cars/:id", async (req, res) => {
   const id = req.params.id;
   const client = await pool.connect();
