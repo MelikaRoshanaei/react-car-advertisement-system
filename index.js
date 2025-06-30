@@ -94,13 +94,42 @@ app.delete("/cars/:id", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: `Car Not Found!` });
+      return res.status(404).json({ error: "Car Not Found!" });
     }
 
     res.status(200).json(result.rows[0]);
   } catch (err) {
     console.log(`Error Deleting Car With ID ${id}:`, err.message);
     res.status(500).json({ error: "Failed To Delete Car!" });
+  } finally {
+    client.release();
+  }
+});
+
+app.patch("/cars/:id", async (req, res) => {
+  const id = req.params.id;
+  //TODO: Add more fields & update the logic
+  const { name } = req.body;
+  const client = await pool.connect();
+
+  if (!name) {
+    return res.status(400).json({ error: "Name Is Required!" });
+  }
+
+  try {
+    const result = await client.query(
+      "UPDATE cars SET name = $1 WHERE id = $2 RETURNING *",
+      [name, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Car Not Found!" });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.log("Error Updating Car Details:", err.message);
+    res.status(500).json({ error: "Failed To Update Car Details!" });
   } finally {
     client.release();
   }
