@@ -284,6 +284,29 @@ app.patch("/cars/:id", async (req, res) => {
   }
 });
 
+app.post("/users", async (req, res) => {
+  const { name } = req.body;
+  const client = await pool.connect();
+
+  if (!name) {
+    return res.status(400).json({ error: "Name Is Required!" });
+  }
+
+  try {
+    const result = await client.query(
+      "INSERT INTO users (name) VALUES ($1) RETURNING *",
+      [name]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.log("Erorr Registering User:", err.message);
+    res.status(500).json({ error: "Failed To Register User!" });
+  } finally {
+    client.release();
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`server is running on port ${PORT}`);
 });
