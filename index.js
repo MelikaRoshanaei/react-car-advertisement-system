@@ -42,18 +42,139 @@ app.get("/cars", async (req, res) => {
 });
 
 app.post("/sell-car", async (req, res) => {
-  //TODO: Add more fields & validations
-  const { name } = req.body;
-  const client = await pool.connect();
+  // Note: replaced "const" keyword with "let" to allow reassignment (e.g. status)
+  let {
+    name,
+    brand,
+    model,
+    color,
+    year,
+    mileage,
+    price,
+    description,
+    user_id,
+    status,
+  } = req.body;
 
-  if (!name) {
-    return res.status(400).json({ error: "Name Is Required!" });
+  // Note: validations ensure that the car name is a non-empty real string, trimmed of white space, not just number like "123" and under 100 characters
+  if (
+    typeof name !== "string" ||
+    !(name = name.trim()) ||
+    name.length > 100 ||
+    /^\d+$/.test(name)
+  ) {
+    return res.status(400).json({
+      error:
+        "Valid Car Name Is Required! (under 100 characters and not only numbers) ",
+    });
   }
+
+  // Validate Brand
+  if (
+    typeof brand !== "string" ||
+    !(brand = brand.trim()) ||
+    brand.length > 50 ||
+    /^\d+$/.test(brand)
+  ) {
+    return res.status(400).json({
+      error:
+        "Valid Brand Is Required (under 50 characters and not only numbers)",
+    });
+  }
+
+  // Validate Model
+  if (
+    typeof model !== "string" ||
+    !(model = model.trim()) ||
+    model.length > 50 ||
+    /^\d+$/.test(model)
+  ) {
+    return res.status(400).json({
+      error:
+        "Valid Model Is Required (under 50 characters and not only numbers)",
+    });
+  }
+
+  // Validate Color
+  if (
+    typeof color !== "string" ||
+    !(color = color.trim()) ||
+    color.length > 30 ||
+    /^\d+$/.test(color)
+  ) {
+    return res.status(400).json({
+      error: "Valid Color Is Required (under 30 characters and not numbers)",
+    });
+  }
+
+  // Validate Year
+  if (
+    typeof year !== "number" ||
+    !Number.isInteger(year) ||
+    year < 1900 ||
+    year > new Date().getFullYear()
+  ) {
+    return res.status(400).json({ error: "Valid Year Is Required!" });
+  }
+
+  // Validate Mileage
+  if (typeof mileage !== "number" || mileage < 0) {
+    return res.status(400).json({ error: "Valid Mileage Is Required!" });
+  }
+
+  // Validate Price
+  if (typeof price !== "number" || price < 0) {
+    return res.status(400).json({ error: "Valid Price Is Required!" });
+  }
+
+  // Validate Description (Optional)
+  if (description && typeof description === "string") {
+    description = description.trim();
+    if (description.length > 1000) {
+      return res.status(400).json({
+        error: "Description Is Too Long! (must be under 1000 characters)",
+      });
+    }
+  }
+
+  // Note: if user_id doesn't refer to an existing user, postgreSQL will throw a foreign key constraint error!
+  if (
+    typeof user_id !== "number" ||
+    !Number.isInteger(user_id) ||
+    user_id <= 0
+  ) {
+    return res.status(400).json({ error: "Valid User ID Is Required!" });
+  }
+
+  const allowedStatuses = ["active", "sold", "archived"];
+  // Note: if status is missing or invalid, default to 'pending'
+  if (
+    typeof status !== "string" ||
+    status.trim() === "" ||
+    !allowedStatuses.includes(status.trim())
+  ) {
+    status = "pending";
+  } else {
+    status = status.trim();
+  }
+
+  const client = await pool.connect();
 
   try {
     const result = await client.query(
-      "INSERT INTO cars (name) VALUES ($1) RETURNING *",
-      [name]
+      "INSERT INTO cars (name, brand, model, color, year, mileage, price, description, user_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *",
+      [
+        name,
+        brand,
+        model,
+        color,
+        year,
+        mileage,
+        price,
+        description,
+        user_id,
+        status,
+      ]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
