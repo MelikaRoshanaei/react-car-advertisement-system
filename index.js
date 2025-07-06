@@ -65,7 +65,7 @@ app.post("/sell-car", async (req, res) => {
   ) {
     return res.status(400).json({
       error:
-        "Valid Car Name Is Required! (under 100 characters and not only numbers) ",
+        "Valid Car Name Is Required! (under 100 characters and not only numbers)",
     });
   }
 
@@ -127,13 +127,19 @@ app.post("/sell-car", async (req, res) => {
     return res.status(400).json({ error: "Valid Price Is Required!" });
   }
 
-  // Validate Description (Optional)
-  if (description && typeof description === "string") {
-    description = description.trim();
-    if (description.length > 1000) {
-      return res.status(400).json({
-        error: "Description Is Too Long! (must be under 1000 characters)",
-      });
+  // Validate Description (if provided)
+  if (description !== undefined && description !== null) {
+    if (typeof description === "string") {
+      description = description.trim();
+      if (description === "") {
+        description = null;
+      } else if (description.length > 1000) {
+        return res.status(400).json({
+          error: "Description Is Too Long! (must be under 1000 characters)",
+        });
+      }
+    } else {
+      return res.status(400).json({ error: "Invalid Description Type!" });
     }
   }
 
@@ -257,18 +263,171 @@ app.delete("/cars/:id", async (req, res) => {
 
 app.patch("/cars/:id", async (req, res) => {
   const id = req.params.id;
-  //TODO: Add more fields & update the logic
-  const { name } = req.body;
-  const client = await pool.connect();
+  let { name, brand, model, color, year, mileage, price, description, status } =
+    req.body;
 
-  if (!name) {
-    return res.status(400).json({ error: "Name Is Required!" });
+  let orderIndex = 1;
+  let queryFields = [];
+  let values = [];
+
+  // Validate Name (if provided)
+  if (name !== undefined) {
+    if (
+      typeof name !== "string" ||
+      !(name = name.trim()) ||
+      name.length > 100 ||
+      /^\d+$/.test(name)
+    ) {
+      return res.status(400).json({
+        error:
+          "Please Provide a Valid Car Name! (under 100 characters and not only numbers)",
+      });
+    }
+    queryFields.push(`name = $${orderIndex}`);
+    values.push(name);
+    orderIndex++;
   }
+
+  // Validate Brand (if provided)
+  if (brand !== undefined) {
+    if (
+      typeof brand !== "string" ||
+      !(brand = brand.trim()) ||
+      brand.length > 50 ||
+      /^\d+$/.test(brand)
+    ) {
+      return res.status(400).json({
+        error:
+          "Please Provide a Valid Brand! (under 50 characters and not only numbers)",
+      });
+    }
+    queryFields.push(`brand = $${orderIndex}`);
+    values.push(brand);
+    orderIndex++;
+  }
+
+  // Validate Model (if provided)
+  if (model !== undefined) {
+    if (
+      typeof model !== "string" ||
+      !(model = model.trim()) ||
+      model.length > 50 ||
+      /^\d+$/.test(model)
+    ) {
+      return res.status(400).json({
+        error:
+          "Please Provide a Valid Model! (under 50 characters and not only numbers)",
+      });
+    }
+    queryFields.push(`model = $${orderIndex}`);
+    values.push(model);
+    orderIndex++;
+  }
+
+  // Validate Color (if provided)
+  if (color !== undefined) {
+    if (
+      typeof color !== "string" ||
+      !(color = color.trim()) ||
+      color.length > 30 ||
+      /^\d+$/.test(color)
+    ) {
+      return res.status(400).json({
+        error:
+          "Please Provide a Valid Color! (under 30 characters and not numbers)",
+      });
+    }
+    queryFields.push(`color = $${orderIndex}`);
+    values.push(color);
+    orderIndex++;
+  }
+
+  // Validate Year (if provided)
+  if (year !== undefined) {
+    if (
+      typeof year !== "number" ||
+      !Number.isInteger(year) ||
+      year < 1900 ||
+      year > new Date().getFullYear()
+    ) {
+      return res.status(400).json({ error: "Please Provide a Valid Year!" });
+    }
+    queryFields.push(`year = $${orderIndex}`);
+    values.push(year);
+    orderIndex++;
+  }
+
+  // Validate Mileage (if provided)
+  if (mileage !== undefined) {
+    if (typeof mileage !== "number" || mileage < 0) {
+      return res.status(400).json({ error: "Please Provide a Valid Mileage!" });
+    }
+    queryFields.push(`mileage = $${orderIndex}`);
+    values.push(mileage);
+    orderIndex++;
+  }
+
+  // Validate Price (if provided)
+  if (price !== undefined) {
+    if (typeof price !== "number" || price < 0) {
+      return res.status(400).json({ error: "Please Provide a Valid Price!" });
+    }
+    queryFields.push(`price = $${orderIndex}`);
+    values.push(price);
+    orderIndex++;
+  }
+
+  // Validate Description (if provided)
+  if (description !== undefined) {
+    if (typeof description === "string") {
+      description = description.trim();
+      if (description === "") {
+        description = null;
+      } else if (description.length > 1000) {
+        return res.status(400).json({
+          error: "Description Is Too Long! (must be under 1000 characters)",
+        });
+      }
+    } else {
+      return res.status(400).json({ error: "Invalid Description Type!" });
+    }
+    queryFields.push(`description = $${orderIndex}`);
+    values.push(description);
+    orderIndex++;
+  }
+
+  // Validate Status (if provided)
+  const allowedStatuses = ["active", "sold", "archived"];
+  // Note: if status is missing or invalid, throw an error and not overwrite 'pending'
+  if (status !== undefined) {
+    if (
+      typeof status !== "string" ||
+      status.trim() === "" ||
+      !allowedStatuses.includes(status.trim())
+    ) {
+      return res.status(400).json({ error: "Please Provide a Valid Status!" });
+    }
+    status = status.trim();
+    queryFields.push(`status = $${orderIndex}`);
+    values.push(status);
+    orderIndex++;
+  }
+
+  // Note: if no valid field provided (everythin undefined), stop early
+  if (queryFields.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "No Valid Field Provided For Update!" });
+  }
+
+  const client = await pool.connect();
 
   try {
     const result = await client.query(
-      "UPDATE cars SET name = $1 WHERE id = $2 RETURNING *",
-      [name, id]
+      `UPDATE cars SET ${queryFields.join(
+        ", "
+      )} WHERE id = $${orderIndex} RETURNING *`,
+      [...values, id]
     );
 
     if (result.rows.length === 0) {
