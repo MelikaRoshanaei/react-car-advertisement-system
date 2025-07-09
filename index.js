@@ -9,16 +9,16 @@ const PORT = process.env.PORT;
 
 app.use(express.json());
 
-// Test DB connection
+// Test DB Connection
 (async () => {
   try {
     const client = await pool.connect();
     const result = await client.query("SELECT NOW()");
-    console.log("✅ DB connected successfully!");
-    console.log("Current time:", result.rows[0].now);
+    console.log("✅ DB Connected Successfully!");
+    console.log("Current Time:", result.rows[0].now);
     client.release();
   } catch (err) {
-    console.error("❌ DB connection failed:", err.message);
+    console.error("❌ DB Connection Failed:", err.message);
     process.exit(1); // Stop the app if DB fails
   }
 })();
@@ -64,8 +64,7 @@ app.post("/sell-car", async (req, res) => {
     /^\d+$/.test(name)
   ) {
     return res.status(400).json({
-      error:
-        "Valid Car Name Is Required! (under 100 characters and not only numbers)",
+      error: "Valid Car Name Is Required!",
     });
   }
 
@@ -77,8 +76,7 @@ app.post("/sell-car", async (req, res) => {
     /^\d+$/.test(brand)
   ) {
     return res.status(400).json({
-      error:
-        "Valid Brand Is Required (under 50 characters and not only numbers)",
+      error: "Valid Brand Is Required!",
     });
   }
 
@@ -90,8 +88,7 @@ app.post("/sell-car", async (req, res) => {
     /^\d+$/.test(model)
   ) {
     return res.status(400).json({
-      error:
-        "Valid Model Is Required (under 50 characters and not only numbers)",
+      error: "Valid Model Is Required!",
     });
   }
 
@@ -103,7 +100,7 @@ app.post("/sell-car", async (req, res) => {
     /^\d+$/.test(color)
   ) {
     return res.status(400).json({
-      error: "Valid Color Is Required (under 30 characters and not numbers)",
+      error: "Valid Color Is Required!",
     });
   }
 
@@ -135,7 +132,7 @@ app.post("/sell-car", async (req, res) => {
         description = null;
       } else if (description.length > 1000) {
         return res.status(400).json({
-          error: "Description Is Too Long! (must be under 1000 characters)",
+          error: "Description Is Too Long!",
         });
       }
     } else {
@@ -192,18 +189,287 @@ app.post("/sell-car", async (req, res) => {
 });
 
 app.get("/cars/search", async (req, res) => {
-  //TODO: Add more fields & update the logic
-  const { name } = req.query;
-  const client = await pool.connect();
+  let {
+    name,
+    brand,
+    model,
+    color,
+    year,
+    minYear,
+    maxYear,
+    price,
+    minPrice,
+    maxPrice,
+    mileage,
+    minMileage,
+    maxMileage,
+    status,
+    sort,
+    order,
+  } = req.query;
 
-  if (!name) {
-    return res.status(400).json({ error: "Name Is Required!" });
+  let orderIndex = 1;
+  let queryFields = [];
+  let values = [];
+
+  // Validate Name (if provided)
+  if (name !== undefined) {
+    if (
+      !(name = name.trim()) ||
+      name === "" ||
+      name.length > 100 ||
+      !/[a-zA-Z]/.test(name)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Car Name!" });
+    }
+    queryFields.push(`name ILIKE $${orderIndex}`);
+    values.push(`%${name}%`);
+    orderIndex++;
   }
+
+  // Validate Brand (if provided)
+  if (brand !== undefined) {
+    if (
+      !(brand = brand.trim()) ||
+      brand === "" ||
+      brand.length > 50 ||
+      !/[a-zA-Z]/.test(brand)
+    ) {
+      return res.status(400).json({ error: "Please Provide a Valid Brand!" });
+    }
+    queryFields.push(`brand ILIKE $${orderIndex}`);
+    values.push(`%${brand}%`);
+    orderIndex++;
+  }
+
+  // Validate Model (if provided)
+  if (model !== undefined) {
+    if (
+      !(model = model.trim()) ||
+      model === "" ||
+      model.length > 50 ||
+      !/[a-zA-Z]/.test(model)
+    ) {
+      return res.status(400).json({ error: "Please Provide a Valid Model!" });
+    }
+    queryFields.push(`model ILIKE $${orderIndex}`);
+    values.push(`%${model}%`);
+    orderIndex++;
+  }
+
+  // Validate Color (if provided)
+  if (color !== undefined) {
+    if (
+      !(color = color.trim()) ||
+      color === "" ||
+      color.length > 30 ||
+      !/[a-zA-Z]/.test(color)
+    ) {
+      return res.status(400).json({ error: "Please Provide a Valid Color!" });
+    }
+    queryFields.push(`color ILIKE $${orderIndex}`);
+    values.push(`%${color}%`);
+    orderIndex++;
+  }
+
+  // Validate Year (if provided)
+  if (year !== undefined) {
+    year = Number(year);
+    if (
+      !Number.isInteger(year) ||
+      year < 1900 ||
+      year > new Date().getFullYear()
+    ) {
+      return res.status(400).json({ error: "Please Provide a Valid Year!" });
+    }
+    queryFields.push(`year = $${orderIndex}`);
+    values.push(year);
+    orderIndex++;
+  }
+
+  // Validate Min-Year (if provided)
+  if (minYear !== undefined) {
+    minYear = Number(minYear);
+    if (
+      !Number.isInteger(minYear) ||
+      minYear < 1900 ||
+      minYear > new Date().getFullYear()
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Min-Year!" });
+    }
+    queryFields.push(`year >= $${orderIndex}`);
+    values.push(minYear);
+    orderIndex++;
+  }
+
+  // Validate Max-Year (if provided)
+  if (maxYear !== undefined) {
+    maxYear = Number(maxYear);
+    if (
+      !Number.isInteger(maxYear) ||
+      maxYear < 1900 ||
+      maxYear > new Date().getFullYear()
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Max-Year!" });
+    }
+    queryFields.push(`year <= $${orderIndex}`);
+    values.push(maxYear);
+    orderIndex++;
+  }
+
+  // Validate Price (if provide)
+  if (price !== undefined) {
+    price = Number(price);
+    if (isNaN(price) || price <= 0) {
+      return res.status(400).json({ error: "Please Provide a Valid Price!" });
+    }
+    queryFields.push(`price = $${orderIndex}`);
+    values.push(price);
+    orderIndex++;
+  }
+
+  // Validate Min-Price (if provided)
+  if (minPrice !== undefined) {
+    minPrice = Number(minPrice);
+    if (isNaN(minPrice) || minPrice < 0) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Min-Price!" });
+    }
+    queryFields.push(`price >= $${orderIndex}`);
+    values.push(minPrice);
+    orderIndex++;
+  }
+
+  // Validate Max-Price (if provided)
+  if (maxPrice !== undefined) {
+    maxPrice = Number(maxPrice);
+    if (isNaN(maxPrice) || maxPrice < 0) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Max-Price!" });
+    }
+    queryFields.push(`price <= $${orderIndex}`);
+    values.push(maxPrice);
+    orderIndex++;
+  }
+
+  // Validate Mileage (if provided)
+  if (mileage !== undefined) {
+    mileage = mileage.trim();
+    if (
+      mileage === "" ||
+      isNaN(mileage) ||
+      !Number.isInteger(Number(mileage)) ||
+      Number(mileage) < 0
+    ) {
+      return res.status(400).json({ error: "Please Provide a Valid Mileage!" });
+    }
+    mileage = Number(mileage);
+    queryFields.push(`mileage = $${orderIndex}`);
+    values.push(mileage);
+    orderIndex++;
+  }
+
+  // Validate Min-Mileage (if provided)
+  if (minMileage !== undefined) {
+    minMileage = minMileage.trim();
+    if (
+      minMileage === "" ||
+      isNaN(minMileage) ||
+      !Number.isInteger(Number(minMileage)) ||
+      Number(minMileage) < 0
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Min-Mileage!" });
+    }
+    minMileage = Number(minMileage);
+    queryFields.push(`mileage >= $${orderIndex}`);
+    values.push(minMileage);
+    orderIndex++;
+  }
+
+  // Validate Max-Mileage (if provided)
+  if (maxMileage !== undefined) {
+    maxMileage = maxMileage.trim();
+    if (
+      maxMileage === "" ||
+      isNaN(maxMileage) ||
+      !Number.isInteger(Number(maxMileage)) ||
+      Number(maxMileage) < 0
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Max-Mileage!" });
+    }
+    maxMileage = Number(maxMileage);
+    queryFields.push(`mileage <= $${orderIndex}`);
+    values.push(maxMileage);
+    orderIndex++;
+  }
+
+  // Validate Status (if provided)
+  const allowedStatuses = ["active", "sold", "archived", "pending"];
+  if (status !== undefined) {
+    status = status.trim().toLowerCase();
+    if (status === "" || !allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: "Please Provide a Valid Status!" });
+    }
+    queryFields.push(`status = $${orderIndex}`);
+    values.push(status);
+    orderIndex++;
+  }
+
+  // Validate Sort (if provided)
+  const allowedSort = ["created_at", "year", "price", "mileage"];
+  // Note: if sort is missing or invalid, default to 'created_at'
+  if (sort !== undefined) {
+    sort = sort.trim().toLowerCase();
+    if (sort === "" || !allowedSort.includes(sort)) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Sort Type!" });
+    }
+  } else {
+    sort = "created_at";
+  }
+
+  // Validate Order (if provided)
+  const allowedOrder = ["ASC", "DESC"];
+  // Note: if order is missing or invalid, default to 'ASC'
+  if (order !== undefined) {
+    order = order.trim().toUpperCase();
+    if (order === "" || !allowedOrder.includes(order)) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Order Type!" });
+    }
+  } else {
+    order = "ASC";
+  }
+
+  // Note: if no valid field provided (everything undefined), stop early
+  if (queryFields.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "No Valid Field Provided For Search!" });
+  }
+
+  const client = await pool.connect();
 
   try {
     const result = await client.query(
-      "SELECT * FROM cars WHERE name ILIKE $1",
-      [`%${name}%`]
+      `SELECT * FROM cars ${
+        queryFields.length ? `WHERE ${queryFields.join(" AND ")}` : ""
+      } ORDER BY ${sort} ${order}`,
+      values
     );
 
     if (result.rows.length === 0) {
@@ -279,8 +545,7 @@ app.patch("/cars/:id", async (req, res) => {
       /^\d+$/.test(name)
     ) {
       return res.status(400).json({
-        error:
-          "Please Provide a Valid Car Name! (under 100 characters and not only numbers)",
+        error: "Please Provide a Valid Car Name!",
       });
     }
     queryFields.push(`name = $${orderIndex}`);
@@ -297,8 +562,7 @@ app.patch("/cars/:id", async (req, res) => {
       /^\d+$/.test(brand)
     ) {
       return res.status(400).json({
-        error:
-          "Please Provide a Valid Brand! (under 50 characters and not only numbers)",
+        error: "Please Provide a Valid Brand!",
       });
     }
     queryFields.push(`brand = $${orderIndex}`);
@@ -315,8 +579,7 @@ app.patch("/cars/:id", async (req, res) => {
       /^\d+$/.test(model)
     ) {
       return res.status(400).json({
-        error:
-          "Please Provide a Valid Model! (under 50 characters and not only numbers)",
+        error: "Please Provide a Valid Model!",
       });
     }
     queryFields.push(`model = $${orderIndex}`);
@@ -333,8 +596,7 @@ app.patch("/cars/:id", async (req, res) => {
       /^\d+$/.test(color)
     ) {
       return res.status(400).json({
-        error:
-          "Please Provide a Valid Color! (under 30 characters and not numbers)",
+        error: "Please Provide a Valid Color!",
       });
     }
     queryFields.push(`color = $${orderIndex}`);
@@ -385,7 +647,7 @@ app.patch("/cars/:id", async (req, res) => {
         description = null;
       } else if (description.length > 1000) {
         return res.status(400).json({
-          error: "Description Is Too Long! (must be under 1000 characters)",
+          error: "Description Is Too Long!",
         });
       }
     } else {
@@ -413,7 +675,7 @@ app.patch("/cars/:id", async (req, res) => {
     orderIndex++;
   }
 
-  // Note: if no valid field provided (everythin undefined), stop early
+  // Note: if no valid field provided (everything undefined), stop early
   if (queryFields.length === 0) {
     return res
       .status(400)
