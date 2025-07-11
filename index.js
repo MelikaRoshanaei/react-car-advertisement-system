@@ -792,6 +792,19 @@ app.post("/users/register", async (req, res) => {
   }
 });
 
+app.get("/users", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query("SELECT * FROM users");
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.log("Error Fetching Users:", err.message);
+    res.status(500).json({ error: "Failed To Fetch Users!" });
+  } finally {
+    client.release();
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`server is running on port ${PORT}`);
 });
