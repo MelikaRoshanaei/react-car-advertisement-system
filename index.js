@@ -705,18 +705,82 @@ app.patch("/cars/:id", async (req, res) => {
   }
 });
 
-app.post("/users", async (req, res) => {
-  const { name } = req.body;
-  const client = await pool.connect();
+app.post("/users/register", async (req, res) => {
+  const { name, email, password, phone_number } = req.body;
+  let role = "user";
 
-  if (!name) {
-    return res.status(400).json({ error: "Name Is Required!" });
+  // Validate Name
+  if (
+    typeof name !== "string" ||
+    name !== name.trim() ||
+    name.length < 3 ||
+    name.length > 100 ||
+    !/^[a-zA-Z\s]{3,100}$/.test(name)
+  ) {
+    return res.status(400).json({ error: "Valid User Name Is Requires!" });
   }
 
+  // Validate Email Address
+  if (
+    typeof email !== "string" ||
+    email !== email.trim() ||
+    email.length > 254 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
+  ) {
+    return res.status(400).json({ error: "Valid Email Address Is Required!" });
+  }
+
+  // Validate Password
+  if (
+    typeof password !== "string" ||
+    password !== password.trim() ||
+    password.length < 8 ||
+    password.length > 64 ||
+    !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,64}$/.test(password)
+  ) {
+    return res.status(400).json({ error: "Valid Password Is Required!" });
+  }
+
+  // Validate Phone Number
+  if (
+    typeof phone_number !== "string" ||
+    phone_number !== phone_number.trim() ||
+    phone_number.length > 15 ||
+    !/^(0|\+98)9\d{9}$/.test(phone_number)
+  ) {
+    return res.status(400).json({ error: "Valid Phone Number Is Required!" });
+  }
+
+  const client = await pool.connect();
+
   try {
+    // Handling Email Duplication
+    const existingEmail = await client.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (existingEmail.rows.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "User With This Email Address Already Exists!" });
+    }
+
+    // Handling Phone Number Duplication
+    const existingPhoneNumber = await client.query(
+      "SELECT * FROM users WHERE phone_number = $1",
+      [phone_number]
+    );
+
+    if (existingPhoneNumber.rows.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "User With This Phone Number Already Exists!" });
+    }
+
     const result = await client.query(
-      "INSERT INTO users (name) VALUES ($1) RETURNING *",
-      [name]
+      "INSERT INTO users (name, email, password, phone_number, role) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [name, email, password, phone_number, role]
     );
 
     res.status(201).json(result.rows[0]);
