@@ -849,6 +849,115 @@ app.delete("/users/:id", async (req, res) => {
   }
 });
 
+app.patch("/users/:id", async (req, res) => {
+  // TODO: Add role field
+  const id = req.params.id;
+  let { name, email, password, phone_number } = req.body;
+
+  let orderIndex = 1;
+  let queryFields = [];
+  let values = [];
+
+  // Validate Name (if provided)
+  if (name !== undefined) {
+    if (
+      typeof name !== "string" ||
+      name !== name.trim() ||
+      name.length < 3 ||
+      name.length > 100 ||
+      !/^[a-zA-Z\s]{3,100}$/.test(name)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid User Name!" });
+    }
+    queryFields.push(`name = $${orderIndex}`);
+    values.push(name);
+    orderIndex++;
+  }
+
+  // Validate Email Address (if provided)
+  if (email !== undefined) {
+    if (
+      typeof email !== "string" ||
+      email !== email.trim() ||
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Email Address!" });
+    }
+    queryFields.push(`email = $${orderIndex}`);
+    values.push(email);
+    orderIndex++;
+  }
+
+  // Validate Password (if provided)
+  if (password !== undefined) {
+    if (
+      typeof password !== "string" ||
+      password !== password.trim() ||
+      password.length < 8 ||
+      password.length > 64 ||
+      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,64}$/.test(password)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid PassWord!" });
+    }
+    queryFields.push(`password = $${orderIndex}`);
+    values.push(password);
+    orderIndex++;
+  }
+
+  // Validate Phone Number (if provided)
+  if (phone_number !== undefined) {
+    if (
+      typeof phone_number !== "string" ||
+      phone_number !== phone_number.trim() ||
+      phone_number.length > 15 ||
+      !/^(0|\+98)9\d{9}$/.test(phone_number)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Phone Number!" });
+    }
+    queryFields.push(`phone_number = $${orderIndex}`);
+    values.push(phone_number);
+    orderIndex++;
+  }
+
+  // Note: if no valid field provided (everything undefined), stop early
+  if (queryFields.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "No Valid Field Provided For Update!" });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    const result = await client.query(
+      `UPDATE users SET ${queryFields.join(
+        ", "
+      )} WHERE id = $${orderIndex} RETURNING *`,
+      [...values, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User Not Found!" });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.log("Error Updating User Details:", err.message);
+    res.status(500).json({ error: "Failed To Update User Details!" });
+  } finally {
+    client.release();
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`server is running on port ${PORT}`);
 });
