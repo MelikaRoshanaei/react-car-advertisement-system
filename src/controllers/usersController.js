@@ -1,4 +1,7 @@
 import pool from "../config/db.js";
+import bcrypt from "bcrypt";
+
+const saltRounds = 10;
 
 export const getAllUsers = async (req, res, next) => {
   let client;
@@ -55,9 +58,12 @@ export const registerUser = async (req, res, next) => {
         .status(400)
         .json({ error: "User With This Phone Number Already Exists!" });
     }
+
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
     const result = await client.query(
       "INSERT INTO users (name, email, password, phone_number, role) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [name, email, password, phone_number, role]
+      [name, email, hashedPassword, phone_number, role]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
