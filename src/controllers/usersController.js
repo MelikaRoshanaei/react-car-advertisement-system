@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const saltRounds = 10;
 
@@ -40,19 +41,23 @@ export const registerUser = async (req, res, next) => {
   try {
     const { name, email, password, phone_number, role } = req.body;
     client = await pool.connect();
+
     const existingEmail = await client.query(
       "SELECT * FROM users WHERE email = $1",
       [email]
     );
+
     if (existingEmail.rows.length > 0) {
       return res
         .status(400)
         .json({ error: "User With This Email Address Already Exists!" });
     }
+
     const existingPhoneNumber = await client.query(
       "SELECT * FROM users WHERE phone_number = $1",
       [phone_number]
     );
+
     if (existingPhoneNumber.rows.length > 0) {
       return res
         .status(400)
@@ -65,7 +70,21 @@ export const registerUser = async (req, res, next) => {
       "INSERT INTO users (name, email, password, phone_number, role) VALUES ($1, $2, $3, $4, $5) RETURNING *",
       [name, email, hashedPassword, phone_number, role]
     );
-    res.status(201).json(result.rows[0]);
+
+    const token = jwt.sign(
+      { id: result.rows[0].id, role: result.rows[0].role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: result.rows[0].id,
+        name: result.rows[0].name,
+        role: result.rows[0].role,
+      },
+    });
   } catch (err) {
     next(err);
   } finally {
