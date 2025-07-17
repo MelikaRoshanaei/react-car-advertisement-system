@@ -92,6 +92,78 @@ export const registerUser = async (req, res, next) => {
   }
 };
 
+export const loginUser = async (req, res, next) => {
+  let client;
+  try {
+    const { email, phone_number, password, loginMethod } = req.body;
+    client = await pool.connect();
+
+    if (loginMethod === "email") {
+      const result = await client.query(
+        "SELECT * FROM users WHERE email = $1",
+        [email]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(401).json({ error: "User Not Found!" });
+      }
+
+      if (await bcrypt.compare(password, result.rows[0].password)) {
+        const token = jwt.sign(
+          { id: result.rows[0].id, role: result.rows[0].role },
+          process.env.JWT_SECRET,
+          { expiresIn: "1d" }
+        );
+
+        res.status(200).json({
+          token,
+          user: {
+            id: result.rows[0].id,
+            name: result.rows[0].name,
+            role: result.rows[0].role,
+          },
+        });
+      } else {
+        return res.status(401).json({ error: "Invalid Credentials!" });
+      }
+    }
+
+    if (loginMethod === "phone_number") {
+      const result = await client.query(
+        "SELECT * FROM users WHERE phone_number = $1",
+        [phone_number]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(401).json({ error: "User Not Found!" });
+      }
+
+      if (await bcrypt.compare(password, result.rows[0].password)) {
+        const token = jwt.sign(
+          { id: result.rows[0].id, role: result.rows[0].role },
+          process.env.JWT_SECRET,
+          { expiresIn: "1d" }
+        );
+
+        res.status(200).json({
+          token,
+          user: {
+            id: result.rows[0].id,
+            name: result.rows[0].name,
+            role: result.rows[0].role,
+          },
+        });
+      } else {
+        return res.status(401).json({ error: "Invalid Credentials!" });
+      }
+    }
+  } catch (err) {
+    next(err);
+  } finally {
+    if (client) client.release();
+  }
+};
+
 export const updateUser = async (req, res, next) => {
   let client;
   try {

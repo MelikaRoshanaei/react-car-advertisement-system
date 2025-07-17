@@ -43,6 +43,68 @@ export const validateUser = (req, res, next) => {
   next();
 };
 
+export const validateUserLogin = (req, res, next) => {
+  const { email, phone_number, password, loginMethod } = req.body;
+
+  if (loginMethod !== "email" && loginMethod !== "phone_number") {
+    return res.status(400).json({ error: "Invalid Login Method!" });
+  }
+
+  if (loginMethod === "email") {
+    if (!email) {
+      return res
+        .status(400)
+        .json({ error: "Email is required for email login!" });
+    }
+
+    if (
+      typeof email !== "string" ||
+      email !== email.trim() ||
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Email Address!" });
+    }
+  }
+
+  if (loginMethod === "phone_number") {
+    if (!phone_number) {
+      return res
+        .status(400)
+        .json({ error: "Phone number is required for phone login!" });
+    }
+
+    if (
+      typeof phone_number !== "string" ||
+      phone_number !== phone_number.trim() ||
+      phone_number.length > 15 ||
+      !/^(0|\+98)9\d{9}$/.test(phone_number)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Please Provide a Valid Phone Number!" });
+    }
+  }
+
+  if (!password) {
+    return res.status(400).json({ error: "Password is required!" });
+  }
+
+  if (
+    typeof password !== "string" ||
+    password !== password.trim() ||
+    password.length < 8 ||
+    password.length > 64 ||
+    !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,64}$/.test(password)
+  ) {
+    return res.status(400).json({ error: "Please Provide a Valid Password!" });
+  }
+
+  next();
+};
+
 export const validateUserUpdate = (req, res, next) => {
   let { name, email, password, phone_number } = req.body;
   let orderIndex = 1;

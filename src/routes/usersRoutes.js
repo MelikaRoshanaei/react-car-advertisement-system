@@ -3,6 +3,7 @@ import {
   getAllUsers,
   getUserById,
   registerUser,
+  loginUser,
   updateUser,
   deleteUser,
   getUserCars,
@@ -10,12 +11,14 @@ import {
 import {
   validateUser,
   validateUserUpdate,
+  validateUserLogin,
 } from "../middleware/validateUser.js";
 
 const router = express.Router();
 
 router.get("/", getAllUsers);
 router.post("/register", validateUser, registerUser);
+router.post("/login", validateUserLogin, loginUser);
 router.get("/:id", getUserById);
 router.get("/:id/cars", getUserCars);
 router.patch("/:id", validateUserUpdate, updateUser);
