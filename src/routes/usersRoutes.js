@@ -13,15 +13,20 @@ import {
   validateUserUpdate,
   validateUserLogin,
 } from "../middleware/validateUser.js";
+import { authMiddleware } from "../middleware/authentication.js";
+import { restrictTo } from "../middleware/authorization.js";
 
 const router = express.Router();
 
-router.get("/", getAllUsers);
+// Public Routes
 router.post("/register", validateUser, registerUser);
 router.post("/login", validateUserLogin, loginUser);
-router.get("/:id", getUserById);
-router.get("/:id/cars", getUserCars);
-router.patch("/:id", validateUserUpdate, updateUser);
-router.delete("/:id", deleteUser);
+
+// Protected Routes
+router.get("/", authMiddleware, restrictTo("admin"), getAllUsers);
+router.get("/:id", authMiddleware, getUserById);
+router.get("/:id/cars", authMiddleware, getUserCars);
+router.patch("/:id", authMiddleware, validateUserUpdate, updateUser);
+router.delete("/:id", authMiddleware, restrictTo("admin"), deleteUser);
 
 export default router;

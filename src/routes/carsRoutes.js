@@ -12,14 +12,18 @@ import {
   validateCarUpdate,
   validateCarSearch,
 } from "../middleware/validateCar.js";
+import { authMiddleware } from "../middleware/authentication.js";
 
 const router = express.Router();
 
+// Public Routes
 router.get("/", getAllCars);
-router.get("/search", validateCarSearch, searchCars);
-router.post("/sell-car", validateCar, createCar);
 router.get("/:id", getCarById);
-router.patch("/:id", validateCarUpdate, updateCar);
-router.delete("/:id", deleteCar);
+router.get("/search", validateCarSearch, searchCars);
+
+// Protected Routes
+router.post("/sell-car", authMiddleware, validateCar, createCar);
+router.patch("/:id", authMiddleware, validateCarUpdate, updateCar);
+router.delete("/:id", authMiddleware, deleteCar);
 
 export default router;
