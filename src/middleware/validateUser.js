@@ -106,7 +106,7 @@ export const validateUserLogin = (req, res, next) => {
 };
 
 export const validateUserUpdate = (req, res, next) => {
-  let { name, email, password, phone_number } = req.body;
+  let { name, email, password, phone_number, role } = req.body;
   let orderIndex = 1;
   let queryFields = [];
   let values = [];
@@ -174,6 +174,21 @@ export const validateUserUpdate = (req, res, next) => {
     }
     queryFields.push(`phone_number = $${orderIndex}`);
     values.push(phone_number);
+    orderIndex++;
+  }
+
+  if (role !== undefined) {
+    if (req.user.role !== "admin") {
+      return res
+        .status(403)
+        .json({ error: "Forbidden: Only admins can update role!" });
+    }
+
+    if (typeof role !== "string" || !["admin", "user"].includes(role)) {
+      return res.status(400).json({ error: "Please Provide a Valid Role!" });
+    }
+    queryFields.push(`role = $${orderIndex}`);
+    values.push(role);
     orderIndex++;
   }
 
