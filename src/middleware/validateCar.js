@@ -78,14 +78,6 @@ export const validateCar = (req, res, next) => {
     }
   }
 
-  if (
-    typeof user_id !== "number" ||
-    !Number.isInteger(user_id) ||
-    user_id <= 0
-  ) {
-    return res.status(400).json({ error: "Valid User ID Is Required!" });
-  }
-
   const allowedStatuses = ["active", "sold", "archived"];
   if (
     typeof status !== "string" ||
