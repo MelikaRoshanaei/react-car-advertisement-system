@@ -18,8 +18,8 @@ const router = express.Router();
 
 // Public Routes
 router.get("/", getAllCars);
-router.get("/:id", getCarById);
 router.get("/search", validateCarSearch, searchCars);
+router.get("/:id", getCarById);
 
 // Protected Routes
 router.post("/sell-car", authMiddleware, validateCar, createCar);
