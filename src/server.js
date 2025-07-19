@@ -1,11 +1,8 @@
-import dotenv from "dotenv";
 import express from "express";
 import pool from "./config/db.js";
 import carsRoutes from "./routes/carsRoutes.js";
 import usersRoutes from "./routes/usersRoutes.js";
 import errorHandler from "./utils/errorHandler.js";
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT;
