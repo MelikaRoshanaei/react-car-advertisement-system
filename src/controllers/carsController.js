@@ -82,20 +82,24 @@ export const updateCar = async (req, res, next) => {
     const { queryFields, values } = req.validatedData;
     client = await pool.connect();
 
+    const check = await client.query("SELECT user_id FROM cars WHERE id = $1", [
+      id,
+    ]);
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: "Car Not Found!" });
+    }
+
+    if (check.rows[0].user_id !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden!" });
+    }
+
     const result = await client.query(
       `UPDATE cars SET ${queryFields.join(", ")} WHERE id = $${
         values.length + 1
       } RETURNING *`,
       [...values, id]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Car Not Found!" });
-    }
-
-    if (result.rows[0].user_id !== req.user.id && req.user.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden!" });
-    }
 
     res.status(200).json(result.rows[0]);
   } catch (err) {
@@ -111,18 +115,22 @@ export const deleteCar = async (req, res, next) => {
     const { id } = req.params;
     client = await pool.connect();
 
+    const check = await client.query("SELECT user_id FROM cars WHERE id = $1", [
+      id,
+    ]);
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: "Car Not Found!" });
+    }
+
+    if (check.rows[0].user_id !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden!" });
+    }
+
     const result = await client.query(
       "DELETE FROM cars WHERE id = $1 RETURNING *",
       [id]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Car Not Found!" });
-    }
-
-    if (result.rows[0].user_id !== req.user.id && req.user.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden!" });
-    }
 
     res.status(200).json(result.rows[0]);
   } catch (err) {

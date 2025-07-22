@@ -24,16 +24,16 @@ export const getUserById = async (req, res, next) => {
     const { id } = req.params;
     client = await pool.connect();
 
+    if (Number(id) !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden!" });
+    }
+
     const result = await client.query("SELECT * FROM users WHERE id = $1", [
       id,
     ]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "User Not Found!" });
-    }
-
-    if (Number(id) !== req.user.id && req.user.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden!" });
     }
 
     res.status(200).json(result.rows[0]);
@@ -179,20 +179,24 @@ export const updateUser = async (req, res, next) => {
     const { queryFields, values } = req.validatedData;
     client = await pool.connect();
 
-    const result = await client.query(
-      `UPDATE users SET ${queryFields.join(", ")} WHERE id = $${
-        values.length + 1
-      } RETURNING *`,
-      [...values, id]
-    );
+    const check = await client.query("SELECT id FROM users WHERE id = $1", [
+      id,
+    ]);
 
-    if (result.rows.length === 0) {
+    if (check.rows.length === 0) {
       return res.status(404).json({ error: "User Not Found!" });
     }
 
     if (Number(id) !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({ error: "Forbidden!" });
     }
+
+    const result = await client.query(
+      `UPDATE users SET ${queryFields.join(", ")} WHERE id = $${
+        values.length + 1
+      } RETURNING *`,
+      [...values, id]
+    );
 
     res.status(200).json(result.rows[0]);
   } catch (err) {
@@ -208,18 +212,22 @@ export const deleteUser = async (req, res, next) => {
     const { id } = req.params;
     client = await pool.connect();
 
-    const result = await client.query(
-      "DELETE FROM users WHERE id = $1 RETURNING *",
-      [id]
-    );
+    const check = await client.query("SELECT id FROM users WHERE id = $1", [
+      id,
+    ]);
 
-    if (result.rows.length === 0) {
+    if (check.rows.length === 0) {
       return res.status(404).json({ error: "User Not Found!" });
     }
 
     if (Number(id) !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({ error: "Forbidden!" });
     }
+
+    const result = await client.query(
+      "DELETE FROM users WHERE id = $1 RETURNING *",
+      [id]
+    );
 
     res.status(200).json(result.rows[0]);
   } catch (err) {
@@ -244,16 +252,16 @@ export const getUserCars = async (req, res, next) => {
       return res.status(404).json({ error: "User Not Found!" });
     }
 
+    if (Number(id) !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden!" });
+    }
+
     const result = await client.query("SELECT * FROM cars WHERE user_id = $1", [
       id,
     ]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "No Car Found For This User!" });
-    }
-
-    if (Number(id) !== req.user.id && req.user.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden!" });
     }
 
     res.status(200).json(result.rows);
