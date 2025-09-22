@@ -1,3 +1,7 @@
+import bcrypt from "bcrypt";
+
+const saltRounds = 10;
+
 export const validateUser = (req, res, next) => {
   let { name, email, password, phone_number, role = "user" } = req.body;
 
@@ -105,7 +109,7 @@ export const validateUserLogin = (req, res, next) => {
   next();
 };
 
-export const validateUserUpdate = (req, res, next) => {
+export const validateUserUpdate = async (req, res, next) => {
   let { name, email, password, phone_number, role } = req.body;
   let orderIndex = 1;
   let queryFields = [];
@@ -156,8 +160,9 @@ export const validateUserUpdate = (req, res, next) => {
         .status(400)
         .json({ error: "Please Provide a Valid Password!" });
     }
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
     queryFields.push(`password = $${orderIndex}`);
-    values.push(password);
+    values.push(hashedPassword);
     orderIndex++;
   }
 
