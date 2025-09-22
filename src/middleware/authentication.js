@@ -2,14 +2,18 @@ import jwt from "jsonwebtoken";
 
 export const authMiddleware = (req, res, next) => {
   const authHeader = req.header("Authorization");
+  let token = null;
 
-  if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "No Token Or Invalid Token Format!" });
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1]?.trim();
+  } else if (req.cookies?.accessToken) {
+    token = req.cookies.accessToken;
   }
 
-  const token = authHeader.split(" ")[1];
   if (!token) {
-    return res.status(401).json({ error: "No Token!" });
+    return res.status(401).json({
+      error: "No Token Provided!",
+    });
   }
 
   try {
