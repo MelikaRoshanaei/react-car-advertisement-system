@@ -405,3 +405,37 @@ export const refreshToken = async (req, res, next) => {
     if (client) client.release();
   }
 };
+
+export const logoutUser = async (req, res, next) => {
+  let client;
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    client = await pool.connect();
+
+    if (!refreshToken) {
+      return res.sendStatus(204);
+    }
+
+    await client.query(
+      "UPDATE users SET refresh_token = NULL WHERE refresh_token = $1",
+      [refreshToken]
+    );
+
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    res.sendStatus(204);
+  } catch (err) {
+    next(err);
+  } finally {
+    if (client) client.release();
+  }
+};
