@@ -1,4 +1,5 @@
 import express from "express";
+import cookieParser from "cookie-parser";
 import pool from "./config/db.js";
 import carsRoutes from "./routes/carsRoutes.js";
 import usersRoutes from "./routes/usersRoutes.js";
@@ -9,6 +10,7 @@ const PORT = process.env.PORT;
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 
 // Test DB Connection
 (async () => {
