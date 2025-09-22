@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 const saltRounds = 10;
 
 export const validateUser = (req, res, next) => {
-  let { name, email, password, phone_number, role = "user" } = req.body;
+  let { name, email, password, phone_number } = req.body;
 
   if (
     typeof name !== "string" ||
@@ -43,7 +43,7 @@ export const validateUser = (req, res, next) => {
     return res.status(400).json({ error: "Valid Phone Number Is Required!" });
   }
 
-  req.body = { name, email, password, phone_number, role };
+  req.body = { name, email, password, phone_number };
   next();
 };
 

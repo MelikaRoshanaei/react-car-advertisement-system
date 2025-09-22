@@ -47,7 +47,7 @@ export const getUserById = async (req, res, next) => {
 export const registerUser = async (req, res, next) => {
   let client;
   try {
-    const { name, email, password, phone_number, role } = req.body;
+    const { name, email, password, phone_number } = req.body;
     client = await pool.connect();
 
     const existingEmail = await client.query(
@@ -75,8 +75,8 @@ export const registerUser = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     const result = await client.query(
-      "INSERT INTO users (name, email, password, phone_number, role) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [name, email, hashedPassword, phone_number, role]
+      "INSERT INTO users (name, email, password, phone_number, role) VALUES ($1, $2, $3, $4, 'user') RETURNING *",
+      [name, email, hashedPassword, phone_number]
     );
 
     const token = jwt.sign(
