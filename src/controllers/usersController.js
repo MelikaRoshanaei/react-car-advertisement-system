@@ -6,6 +6,22 @@ const saltRounds = 10;
 
 const SAFE_USER_FIELDS = ["id", "name", "role", "created_at"];
 
+const generateAccessToken = (user) => {
+  return jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "15m" } // Short-lived
+  );
+};
+
+const generateRefreshToken = (user) => {
+  return jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: "7d" } // Long-lived
+  );
+};
+
 export const getAllUsers = async (req, res, next) => {
   let client;
   try {
@@ -86,14 +102,29 @@ export const registerUser = async (req, res, next) => {
       [name, email, hashedPassword, phone_number]
     );
 
-    const token = jwt.sign(
-      { id: result.rows[0].id, role: result.rows[0].role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const accessToken = generateAccessToken(result.rows[0]);
+    const refreshToken = generateRefreshToken(result.rows[0]);
+
+    await client.query("UPDATE users SET refresh_token = $1 WHERE id = $2", [
+      refreshToken,
+      result.rows[0].id,
+    ]);
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
     res.status(201).json({
-      token,
       user: result.rows[0],
     });
   } catch (err) {
@@ -123,18 +154,34 @@ export const loginUser = async (req, res, next) => {
       }
 
       if (await bcrypt.compare(password, result.rows[0].password)) {
-        const token = jwt.sign(
-          { id: result.rows[0].id, role: result.rows[0].role },
-          process.env.JWT_SECRET,
-          { expiresIn: "1d" }
+        const accessToken = generateAccessToken(result.rows[0]);
+        const refreshToken = generateRefreshToken(result.rows[0]);
+
+        await client.query(
+          "UPDATE users SET refresh_token = $1 WHERE id = $2",
+          [refreshToken, result.rows[0].id]
         );
 
+        res.cookie("accessToken", accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 15 * 60 * 1000, // 15 minutes
+        });
+
+        res.cookie("refreshToken", refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
         res.status(200).json({
-          token,
           user: {
             id: result.rows[0].id,
             name: result.rows[0].name,
             role: result.rows[0].role,
+            created_at: result.rows[0].created_at,
           },
         });
       } else {
@@ -156,14 +203,29 @@ export const loginUser = async (req, res, next) => {
       }
 
       if (await bcrypt.compare(password, result.rows[0].password)) {
-        const token = jwt.sign(
-          { id: result.rows[0].id, role: result.rows[0].role },
-          process.env.JWT_SECRET,
-          { expiresIn: "1d" }
+        const accessToken = generateAccessToken(result.rows[0]);
+        const refreshToken = generateRefreshToken(result.rows[0]);
+
+        await client.query(
+          "UPDATE users SET refresh_token = $1 WHERE id = $2",
+          [refreshToken, result.rows[0].id]
         );
 
+        res.cookie("accessToken", accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 15 * 60 * 1000, // 15 minutes
+        });
+
+        res.cookie("refreshToken", refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
         res.status(200).json({
-          token,
           user: {
             id: result.rows[0].id,
             name: result.rows[0].name,
