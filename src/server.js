@@ -1,5 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import pool from "./config/db.js";
 import carsRoutes from "./routes/carsRoutes.js";
 import usersRoutes from "./routes/usersRoutes.js";
@@ -11,6 +12,13 @@ const PORT = process.env.PORT;
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+
+app.use(
+  cors({
+    origin: process.env.CLIENT_ORIGIN,
+    credentials: true,
+  })
+);
 
 // Test DB Connection
 (async () => {
