@@ -345,3 +345,63 @@ export const getUserCars = async (req, res, next) => {
     if (client) client.release();
   }
 };
+
+export const refreshToken = async (req, res, next) => {
+  let client;
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    client = await pool.connect();
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: "Refresh Token Not Found!" });
+    }
+
+    const result = await client.query(
+      `SELECT ${SAFE_USER_FIELDS.join(
+        ", "
+      )} FROM users WHERE refresh_token = $1`,
+      [refreshToken]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Invalid Refresh Token!" });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+    if (decoded.id !== result.rows[0].id) {
+      return res.status(403).json({ error: "Token Mismatch!" });
+    }
+
+    const newAccessToken = generateAccessToken(result.rows[0]);
+
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.status(200).json({
+      message: "Access token refreshed",
+      user: {
+        id: result.rows[0].id,
+        name: result.rows[0].name,
+        role: result.rows[0].role,
+        created_at: result.rows[0].created_at,
+      },
+    });
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Refresh Token Expired!" });
+    }
+
+    if (err.name === "JsonWebTokenError") {
+      return res.status(401).json({ error: "Invalid Refresh Token!" });
+    }
+
+    next(err);
+  } finally {
+    if (client) client.release();
+  }
+};

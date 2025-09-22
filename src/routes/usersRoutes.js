@@ -7,6 +7,7 @@ import {
   updateUser,
   deleteUser,
   getUserCars,
+  refreshToken,
 } from "../controllers/usersController.js";
 import {
   validateUser,
@@ -21,6 +22,7 @@ const router = express.Router();
 // Public Routes
 router.post("/register", validateUser, registerUser);
 router.post("/login", validateUserLogin, loginUser);
+router.get("/refresh", refreshToken);
 
 // Protected Routes
 router.get("/", authMiddleware, restrictTo("admin"), getAllUsers);
